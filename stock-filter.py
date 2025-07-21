@@ -37,7 +37,6 @@ def send_discord_webhook(matched_stocks: list, webhook_url: str = None):
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     message += f"\n\n⏰ **실행 시간**: {current_time}"
     
-    print(message)
     try:
         payload = {"content": message}
         response = requests.post(webhook_url, json=payload, timeout=10)
