@@ -1,6 +1,6 @@
 import os
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
@@ -34,8 +34,9 @@ def send_discord_webhook(matched_stocks: list, webhook_url: str = None):
         message = f"{filter_desc}\n✅ **조건 만족 종목 ({len(matched_stocks)}개)**\n\n{stocks_text}"
     
     # 현재 시간 추가
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    message += f"\n\n⏰ **실행 시간**: {current_time}"
+    KST = timezone(timedelta(hours=9))
+    current_time = datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S")
+    message += f"\n\n⏰ **실행 시간**: {current_time} (KST)"
     
     try:
         payload = {"content": message}
