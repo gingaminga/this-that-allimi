@@ -5,6 +5,17 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
 import FinanceDataReader as fdr
+import numpy as np
+
+
+def calculate_rsi(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    """RSI 계산 함수"""
+    delta = df['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    rs = gain / loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
 
 
 def send_discord_webhook(matched_stocks: list, webhook_url: str = None):
@@ -20,8 +31,7 @@ def send_discord_webhook(matched_stocks: list, webhook_url: str = None):
     filter_desc = (
         "📊 [필터링 조건]\n"
         "- 3개월 평균 거래량 < 100만, 3개월 내 100만 이상 1회\n"
-        "- 구름대 하단의 95% ≤ 종가 ≤ 구름대 상단, 전환선 > 기준선\n"
-        "  (파란 구름대 돌파 시도/진입 중)\n"
+        "- RSI(14) ≤ 40\n"
         "- 최근 7일 내 5일선이 20일선 돌파\n"
     )
     
@@ -49,39 +59,6 @@ def send_discord_webhook(matched_stocks: list, webhook_url: str = None):
         print(f"❌ 디스코드 전송 오류: {e}")
 
 
-def calculate_ichimoku(df: pd.DataFrame) -> pd.DataFrame:
-    """일목균형표 계산"""
-    high = df['High']
-    low = df['Low']
-    close = df['Close']
-    
-    # 전환선 (9일)
-    period9 = 9
-    conversion = (high.rolling(window=period9).max() + low.rolling(window=period9).min()) / 2
-    
-    # 기준선 (26일)
-    period26 = 26
-    base = (high.rolling(window=period26).max() + low.rolling(window=period26).min()) / 2
-    
-    # 선행스팬1 (전환선 + 기준선) / 2, 26일 앞으로 이동
-    span1 = ((conversion + base) / 2).shift(period26)
-    
-    # 선행스팬2 (52일 고가 + 저가) / 2, 26일 앞으로 이동
-    period52 = 52
-    span2 = ((high.rolling(window=period52).max() + low.rolling(window=period52).min()) / 2).shift(period26)
-    
-    # 후행스팬 (현재가, 26일 뒤로 이동)
-    lagging = close.shift(-period26)
-    
-    df['ISA_9'] = conversion
-    df['ISB_26'] = base
-    df['ITS_26'] = span1
-    df['IKS_52'] = span2
-    df['ILS_26'] = lagging
-    
-    return df
-
-
 def check_conditions(df: pd.DataFrame) -> bool:
     if len(df) < 60:
         return False
@@ -95,33 +72,12 @@ def check_conditions(df: pd.DataFrame) -> bool:
     if three_month_max < 1_000_000:   # 3개월 내 100만 이상이 없으면 제외
         return False
 
-    # RSI 조건 제거됨
-
-    # 3) 일목균형표 계산
-    df = calculate_ichimoku(df)
-
-    try:
-        latest = df.iloc[-1]
-        # 파란 구름대 관련 조건 (뚫기 시작, 뚫는 중, 뚫은 후 모두 포함)
-        # ITS_26: 선행스팬1, IKS_52: 선행스팬2
-        cloud_top = max(latest['ITS_26'], latest['IKS_52'])
-        cloud_bottom = min(latest['ITS_26'], latest['IKS_52'])
-        
-        # 현재가가 구름대 하단 근처에 있거나 구름대 안에 있어야 함 (뚫은 후는 제외)
-        # 구름대 하단의 5% 이내 근처도 포함
-        cloud_threshold = cloud_bottom * 0.95  # 구름대 하단의 95% 지점
-        
-        if latest['Close'] < cloud_threshold or latest['Close'] > cloud_top:
-            return False
-            
-        # 전환선이 기준선 위에 있어야 함 (추가 조건)
-        if latest['ISA_9'] <= latest['ISB_26']:
-            return False
-            
-    except KeyError:
+    # 2) RSI 조건: RSI(14)가 40 이하
+    rsi = calculate_rsi(df, period=14)
+    if rsi.iloc[-1] > 40:  # RSI가 40 초과면 제외
         return False
 
-    # 4) 5일선이 20일선 돌파 (골든크로스) - 최근 7일 내 돌파
+    # 3) 5일선이 20일선 돌파 (골든크로스) - 최근 7일 내 돌파
     ma5 = df['Close'].rolling(5).mean()
     ma20 = df['Close'].rolling(20).mean()
 
@@ -144,7 +100,9 @@ def analyze_stock(stock_info):
     name = stock_info['Name']
     
     try:
-        df = fdr.DataReader(code, start=(datetime.today() - timedelta(days=90)).strftime('%Y-%m-%d'))
+        # 어제 날짜를 기준으로 데이터 가져오기 (자정 이후 안정성을 위해)
+        yesterday = datetime.today() - timedelta(days=1)
+        df = fdr.DataReader(code, start=(yesterday - timedelta(days=90)).strftime('%Y-%m-%d'))
         
         # 거래량 조건 먼저 체크
         three_month_avg = df['Volume'].tail(90).mean()
