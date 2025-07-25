@@ -6,7 +6,8 @@ const CONFIG = {
     USER_AGENT: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
     BASE_URL: 'https://www.bntnews.co.kr',
     SEARCH_PATH: '/article/search?searchText=%ED%86%A0%EC%8A%A4',
-    TIMEOUT: 10000
+    TIMEOUT: 10000,
+    WEBHOOK_URL: process.env.DISCORD_WEBHOOK_URL
 };
 
 // 날짜 관련 유틸리티
@@ -146,7 +147,7 @@ function parseQuizAnswers(content) {
 
 // Discord 메시지 전송
 async function sendToDiscord(title, quizData, targetDate = new Date(), articleData = {}) {
-    if (!CONFIG.WEBHOOK_URL || CONFIG.WEBHOOK_URL === 'YOUR_DISCORD_WEBHOOK_URL_HERE') {
+    if (!CONFIG.WEBHOOK_URL) {
         console.log('Discord Webhook URL이 설정되지 않았습니다.');
         return;
     }
