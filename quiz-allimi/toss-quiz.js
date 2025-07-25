@@ -1,5 +1,7 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
+const fs = require('fs').promises;
+const path = require('path');
 
 // 설정
 const CONFIG = {
@@ -9,6 +11,44 @@ const CONFIG = {
     TIMEOUT: 10000,
     WEBHOOK_URL: process.env.DISCORD_WEBHOOK_URL
 };
+
+// 처리된 기사 관리
+const PROCESSED_ARTICLES_FILE = path.join(__dirname, 'processed_articles.json');
+
+// 처리된 기사 목록 로드
+async function loadProcessedArticles() {
+    try {
+        const data = await fs.readFile(PROCESSED_ARTICLES_FILE, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        // 파일이 없으면 빈 객체 반환
+        return {};
+    }
+}
+
+// 기사가 이미 처리되었는지 확인
+async function isArticleProcessed(articleUrl) {
+    const processedArticles = await loadProcessedArticles();
+    return processedArticles.hasOwnProperty(articleUrl);
+}
+
+// 처리된 기사 목록에 추가
+async function markArticleAsProcessed(articleUrl, targetDate) {
+    try {
+        const processedArticles = await loadProcessedArticles();
+        const targetKorean = getKoreanDate(targetDate);
+        
+        processedArticles[articleUrl] = {
+            date: targetKorean,
+            timestamp: new Date().toISOString()
+        };
+        
+        await fs.writeFile(PROCESSED_ARTICLES_FILE, JSON.stringify(processedArticles, null, 2));
+        console.log(`✅ 기사 처리 완료: ${articleUrl}`);
+    } catch (error) {
+        console.error('처리된 기사 저장 실패:', error.message);
+    }
+}
 
 // 날짜 관련 유틸리티
 function isValidDate(dateString) {
@@ -149,7 +189,7 @@ function parseQuizAnswers(content) {
 async function sendToDiscord(title, quizData, targetDate = new Date(), articleData = {}) {
     if (!CONFIG.WEBHOOK_URL) {
         console.log('Discord Webhook URL이 설정되지 않았습니다.');
-        return;
+        return false;
     }
 
     const targetKorean = getKoreanDate(targetDate);
@@ -172,8 +212,10 @@ async function sendToDiscord(title, quizData, targetDate = new Date(), articleDa
     try {
         await axios.post(CONFIG.WEBHOOK_URL, { content: message });
         console.log('Discord로 메시지 전송 완료!');
+        return true;
     } catch (error) {
         console.error('Discord 전송 실패:', error.message);
+        return false;
     }
 }
 
@@ -193,11 +235,28 @@ async function main() {
     
     if (articleData) {
         console.log('기사 제목:', articleData.title);
+        console.log('기사 URL:', articleData.url);
+        
+        // 이미 처리된 기사인지 확인
+        const alreadyProcessed = await isArticleProcessed(articleData.url);
+        
+        if (alreadyProcessed) {
+            console.log('🔄 이미 처리된 기사입니다. 중복 전송을 건너뜁니다.');
+            return;
+        }
         
         const quizData = parseQuizAnswers(articleData.content);
         console.log('파싱된 퀴즈 데이터:', quizData);
         
-        await sendToDiscord(articleData.title, quizData, targetDate, articleData);
+        // 새로운 기사이므로 Discord에 전송
+        const sendSuccess = await sendToDiscord(articleData.title, quizData, targetDate, articleData);
+        
+        // Discord 전송이 성공했을 때만 처리 완료로 마킹
+        if (sendSuccess) {
+            await markArticleAsProcessed(articleData.url, targetDate);
+        } else {
+            console.log('❌ Discord 전송 실패로 인해 처리 완료 마킹을 건너뜁니다.');
+        }
     } else {
         console.log('기사를 찾을 수 없거나 오류가 발생했습니다.');
     }
