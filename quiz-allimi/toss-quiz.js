@@ -207,8 +207,6 @@ async function sendToDiscord(title, quizData, targetDate = new Date(), articleDa
         message += '❌ 정답을 찾을 수 없습니다.\n';
     }
     
-    message += `⏰ 업데이트 시간: ${new Date().toLocaleString('ko-KR')}`;
-
     try {
         await axios.post(CONFIG.WEBHOOK_URL, { content: message });
         console.log('Discord로 메시지 전송 완료!');
