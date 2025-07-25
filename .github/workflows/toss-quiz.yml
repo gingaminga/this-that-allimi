@@ -1,0 +1,30 @@
+name: Toss Quiz Scraper
+
+on:
+  schedule:
+    - cron: '0 0,2,4,6,8 * * *'  # 한국 시간 09:00, 11:00, 13:00, 15:00, 17:00 (2시간마다)
+  workflow_dispatch:  # 수동 실행 가능
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: |
+        cd quiz-allimi
+        npm install
+        
+    - name: Run scraper
+      env:
+        DISCORD_WEBHOOK_URL: ${{ secrets.QUIZ_DISCORD_WEBHOOK_URL }}
+      run: |
+        cd quiz-allimi
+        node toss-quiz.js 

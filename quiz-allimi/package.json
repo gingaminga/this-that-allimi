@@ -1,0 +1,21 @@
+{
+  "name": "quiz-allimi",
+  "version": "1.0.0",
+  "description": "Toss quiz answer scraper and Discord notifier",
+  "main": "toss-quiz.js",
+  "scripts": {
+    "start": "node toss-quiz.js"
+  },
+  "dependencies": {
+    "axios": "^1.11.0",
+    "cheerio": "^1.1.0",
+    "dotenv": "^17.2.1"
+  },
+  "keywords": [
+    "quiz",
+    "scraper",
+    "discord"
+  ],
+  "author": "",
+  "license": "MIT"
+}
