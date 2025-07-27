@@ -5,18 +5,38 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
 import FinanceDataReader as fdr
-import numpy as np
 
-
-def calculate_rsi(df: pd.DataFrame, period: int = 14) -> pd.Series:
-    """RSI 계산 함수"""
-    delta = df['Close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-    rs = gain / loss
-    rsi = 100 - (100 / (1 + rs))
-    return rsi
-
+def calculate_ichimoku(df: pd.DataFrame):
+    """일목균형표 지표 계산 (정확한 공식)"""
+    # 기준 설정
+    conversion_period = 9    # 전환기간
+    base_period = 26        # 기준기간
+    leading_span2_period = 52  # 선행2기간
+    displacement = 26       # 선행 이동값
+    
+    high = df['High']
+    low = df['Low']
+    close = df['Close']
+    
+    # 전환선 (9일 최고가 + 최저가) / 2
+    conversion_line = (high.rolling(conversion_period).max() + low.rolling(conversion_period).min()) / 2
+    
+    # 기준선 (26일 최고가 + 최저가) / 2
+    base_line = (high.rolling(base_period).max() + low.rolling(base_period).min()) / 2
+    
+    # 선행스팬1 = (전환선 + 기준선) / 2
+    leading_span1 = (conversion_line + base_line) / 2
+    
+    # 선행스팬2 = (52일 최고가 + 최저가) / 2
+    leading_span2 = (high.rolling(leading_span2_period).max() + 
+                     low.rolling(leading_span2_period).min()) / 2
+    
+    return {
+        'conversion_line': conversion_line,
+        'base_line': base_line,
+        'leading_span1': leading_span1,
+        'leading_span2': leading_span2
+    }
 
 def send_discord_webhook(matched_stocks: list, webhook_url: str = None):
     """디스코드 웹훅으로 결과 전송"""
@@ -31,8 +51,8 @@ def send_discord_webhook(matched_stocks: list, webhook_url: str = None):
     filter_desc = (
         "📊 [필터링 조건]\n"
         "- 3개월 평균 거래량 < 100만, 3개월 내 100만 이상 1회\n"
-        "- RSI(14) ≤ 40\n"
         "- 최근 7일 내 5일선이 20일선 돌파\n"
+        "- 현재 주가가 일목균형표 음구름(파랑) 아래\n"
     )
     
     if not matched_stocks:
@@ -60,7 +80,7 @@ def send_discord_webhook(matched_stocks: list, webhook_url: str = None):
 
 
 def check_conditions(df: pd.DataFrame) -> bool:
-    if len(df) < 60:
+    if len(df) < 78:  # 일목균형표 계산을 위해 충분한 데이터 필요 (52 + 26)
         return False
 
     # 1) 거래량 조건: 3개월 평균 거래량 < 100만이면서 3개월 내 100만 이상 한 번 이상
@@ -72,12 +92,7 @@ def check_conditions(df: pd.DataFrame) -> bool:
     if three_month_max < 1_000_000:   # 3개월 내 100만 이상이 없으면 제외
         return False
 
-    # 2) RSI 조건: RSI(14)가 40 이하
-    rsi = calculate_rsi(df, period=14)
-    if rsi.iloc[-1] > 40:  # RSI가 40 초과면 제외
-        return False
-
-    # 3) 5일선이 20일선 돌파 (골든크로스) - 최근 7일 내 돌파
+    # 2) 5일선이 20일선 돌파 (골든크로스) - 최근 7일 내 돌파
     ma5 = df['Close'].rolling(5).mean()
     ma20 = df['Close'].rolling(20).mean()
 
@@ -91,6 +106,30 @@ def check_conditions(df: pd.DataFrame) -> bool:
     if not golden_cross_found:
         return False
 
+    # 3) 일목균형표 조건: 현재 주가가 음구름(파란색구름대) 아래에 있는지
+    ichimoku = calculate_ichimoku(df)
+    current_price = df['Close'].iloc[-1]
+    
+    # 현재 시점의 구름대: 26일 전에 계산된 선행스팬 값들
+    span1_current = ichimoku['leading_span1'].iloc[-26]
+    span2_current = ichimoku['leading_span2'].iloc[-26]
+    
+    # NaN 값 체크
+    if pd.isna(span1_current) or pd.isna(span2_current):
+        return False
+    
+    # 구름대 판단: 선행스팬1 < 선행스팬2이면 음구름(파란색)
+    is_negative_cloud = span1_current < span2_current
+    
+    if not is_negative_cloud:
+        return False
+    
+    # 현재 주가가 구름대 아래에 있는지 확인
+    cloud_bottom = min(span1_current, span2_current)
+    
+    if current_price >= cloud_bottom:
+        return False
+
     return True
 
 
@@ -100,9 +139,9 @@ def analyze_stock(stock_info):
     name = stock_info['Name']
     
     try:
-        # 어제 날짜를 기준으로 데이터 가져오기 (자정 이후 안정성을 위해)
+        # 어제 날짜를 기준으로 데이터 가져오기 (일목균형표 계산을 위해 120일)
         yesterday = datetime.today() - timedelta(days=1)
-        df = fdr.DataReader(code, start=(yesterday - timedelta(days=90)).strftime('%Y-%m-%d'))
+        df = fdr.DataReader(code, start=(yesterday - timedelta(days=120)).strftime('%Y-%m-%d'))
         
         # 거래량 조건 먼저 체크
         three_month_avg = df['Volume'].tail(90).mean()
