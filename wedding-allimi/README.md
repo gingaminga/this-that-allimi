@@ -28,7 +28,7 @@ pnpm test:wedding
 cd wedding-allimi
 supabase link --project-ref YOUR_PROJECT_REF
 supabase secrets set DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
-supabase secrets set SUPABASE_WEBHOOK_SECRET="충분히-긴-임의의-문자열"
+supabase secrets set WEDDING_WEBHOOK_SECRET="충분히-긴-임의의-문자열"
 supabase functions deploy wedding-allimi
 ```
 
@@ -42,6 +42,6 @@ supabase functions deploy wedding-allimi
 
 - URL: `https://YOUR_PROJECT_REF.supabase.co/functions/v1/wedding-allimi`
 - HTTP method: `POST`
-- Header: `x-webhook-secret: SUPABASE_WEBHOOK_SECRET에 설정한 값`
+- Header: `x-webhook-secret: WEDDING_WEBHOOK_SECRET에 설정한 값`
 
 Database Webhook이므로 청첩장 API의 저장 성공 여부와 Discord 전송 상태가 분리됩니다. Discord 장애 시 함수가 오류를 반환해 Supabase 측에서 실패를 확인할 수 있습니다.

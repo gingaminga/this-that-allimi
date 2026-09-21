@@ -12,7 +12,7 @@ Deno.serve(async (request) => {
   }
 
   const webhookUrl = Deno.env.get("DISCORD_WEBHOOK_URL");
-  const expectedSecret = Deno.env.get("SUPABASE_WEBHOOK_SECRET");
+  const expectedSecret = Deno.env.get("WEDDING_WEBHOOK_SECRET");
   const providedSecret = request.headers.get("x-webhook-secret");
 
   if (!webhookUrl || !expectedSecret) {
