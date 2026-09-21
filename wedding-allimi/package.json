@@ -1,0 +1,14 @@
+{
+  "name": "wedding-allimi",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Supabase 웨딩 응답을 Discord 임베드로 전달하는 Edge Function",
+  "scripts": {
+    "check": "node --check supabase/functions/_shared/discord.mjs && node --check test/discord.test.mjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

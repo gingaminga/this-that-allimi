@@ -1,0 +1,4 @@
+project_id = "wedding-allimi"
+
+[functions.wedding-allimi]
+verify_jwt = false

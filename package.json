@@ -1,0 +1,23 @@
+{
+  "name": "this-that-allimi",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "description": "작은 자동화와 Discord 알림 서비스를 한곳에서 관리하는 모노레포",
+  "workspaces": [
+    "quiz-allimi",
+    "wedding-allimi"
+  ],
+  "scripts": {
+    "check": "pnpm check:quiz && pnpm check:stock && pnpm check:wedding",
+    "check:quiz": "node --check quiz-allimi/toss-quiz.js",
+    "check:stock": "python3 -c \"import ast, pathlib; ast.parse(pathlib.Path('stock-allimi/stock-filter-1.py').read_text())\"",
+    "check:wedding": "pnpm --filter wedding-allimi check",
+    "test": "pnpm --recursive --if-present test",
+    "quiz": "pnpm --filter quiz-allimi start",
+    "test:wedding": "pnpm --filter wedding-allimi test"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

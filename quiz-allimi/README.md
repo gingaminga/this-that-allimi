@@ -14,7 +14,7 @@ bnt뉴스에서 토스 행운퀴즈 정답을 자동으로 스크래핑하여 Di
 
 ```bash
 # 의존성 설치
-npm install
+pnpm install
 ```
 
 ## 설정
@@ -31,7 +31,7 @@ const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/YOUR_WEBHOOK_URL';
 
 ```bash
 # 오늘 날짜 퀴즈 정답 가져오기
-npm start
+pnpm --filter quiz-allimi start
 
 # 또는 직접 실행
 node toss-quiz.js
@@ -85,4 +85,4 @@ Discord로 메시지 전송 완료!
 - 웹사이트 구조 변경 시 스크래핑 로직 수정 필요
 - Discord Webhook URL은 보안을 위해 환경변수로 관리 권장
 - 과도한 요청으로 인한 차단 방지를 위해 적절한 딜레이 설정 필요
-- 날짜 형식은 반드시 YYYY-MM-DD 형식을 사용해야 함 
+- 날짜 형식은 반드시 YYYY-MM-DD 형식을 사용해야 함
