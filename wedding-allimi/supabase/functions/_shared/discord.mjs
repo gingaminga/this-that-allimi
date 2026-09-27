@@ -4,6 +4,20 @@ const TABLE_FORMATTERS = {
   guestbook_entries: formatGuestbook,
 };
 
+export function buildDiscordWebhookUrl(webhookUrl, threadId) {
+  if (!threadId) return webhookUrl;
+
+  const normalizedThreadId = String(threadId).trim();
+  if (!/^\d{17,20}$/.test(normalizedThreadId)) {
+    throw new Error("Discord 스레드 ID 형식이 올바르지 않습니다.");
+  }
+
+  const url = new URL(webhookUrl);
+  url.searchParams.set("thread_id", normalizedThreadId);
+  url.searchParams.set("wait", "true");
+  return url.toString();
+}
+
 const COLORS = {
   attendance: 0x789985,
   absence: 0xb98282,

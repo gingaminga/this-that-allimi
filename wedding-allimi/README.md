@@ -28,9 +28,12 @@ pnpm test:wedding
 cd wedding-allimi
 supabase link --project-ref YOUR_PROJECT_REF
 supabase secrets set DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+supabase secrets set DISCORD_THREAD_ID="123456789012345678"
 supabase secrets set WEDDING_WEBHOOK_SECRET="충분히-긴-임의의-문자열"
 supabase functions deploy wedding-allimi
 ```
+
+`DISCORD_WEBHOOK_URL`은 대상 스레드의 부모 채널에 연결된 웹훅 URL이어야 합니다. Discord에서 **사용자 설정 → 고급 → 개발자 모드**를 켠 뒤 대상 스레드를 우클릭해 **스레드 ID 복사**를 선택하고, 그 값을 `DISCORD_THREAD_ID`에 저장합니다. 스레드가 보관된 상태여도 웹훅 전송 시 자동으로 다시 열립니다.
 
 3. Supabase Dashboard의 **Database → Webhooks**에서 아래 Webhook을 생성합니다.
 

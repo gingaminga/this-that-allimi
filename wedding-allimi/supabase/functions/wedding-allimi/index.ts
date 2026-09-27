@@ -1,4 +1,4 @@
-import { buildDiscordMessage } from "../_shared/discord.mjs";
+import { buildDiscordMessage, buildDiscordWebhookUrl } from "../_shared/discord.mjs";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
 
@@ -12,6 +12,7 @@ Deno.serve(async (request) => {
   }
 
   const webhookUrl = Deno.env.get("DISCORD_WEBHOOK_URL");
+  const threadId = Deno.env.get("DISCORD_THREAD_ID");
   const expectedSecret = Deno.env.get("WEDDING_WEBHOOK_SECRET");
   const providedSecret = request.headers.get("x-webhook-secret");
 
@@ -27,7 +28,7 @@ Deno.serve(async (request) => {
   try {
     const payload = await request.json();
     const discordPayload = buildDiscordMessage(payload);
-    const discordResponse = await fetch(webhookUrl, {
+    const discordResponse = await fetch(buildDiscordWebhookUrl(webhookUrl, threadId), {
       method: "POST",
       headers: JSON_HEADERS,
       body: JSON.stringify(discordPayload),

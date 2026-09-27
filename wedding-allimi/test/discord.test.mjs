@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildDiscordMessage, maskPhone } from "../supabase/functions/_shared/discord.mjs";
+import {
+  buildDiscordMessage,
+  buildDiscordWebhookUrl,
+  maskPhone,
+} from "../supabase/functions/_shared/discord.mjs";
 
 const now = new Date("2026-09-21T05:00:00.000Z");
 
@@ -63,4 +67,23 @@ test("지원하지 않는 테이블은 거부한다", () => {
 test("전화번호 마스킹", () => {
   assert.equal(maskPhone("010-9876-5432"), "010-****-5432");
   assert.equal(maskPhone("123"), "-");
+});
+
+test("Discord 웹훅 URL에 대상 스레드 ID를 추가한다", () => {
+  const result = buildDiscordWebhookUrl(
+    "https://discord.com/api/webhooks/123/token?existing=value",
+    "123456789012345678",
+  );
+
+  const url = new URL(result);
+  assert.equal(url.searchParams.get("existing"), "value");
+  assert.equal(url.searchParams.get("thread_id"), "123456789012345678");
+  assert.equal(url.searchParams.get("wait"), "true");
+});
+
+test("Discord 스레드 ID 형식을 검증한다", () => {
+  assert.throws(
+    () => buildDiscordWebhookUrl("https://discord.com/api/webhooks/123/token", "not-a-thread"),
+    /스레드 ID 형식/,
+  );
 });
